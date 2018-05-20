@@ -25,3 +25,4 @@ _cgo_export.*
 *.iml
 
 network-consensus-e2e-testsuite
+.tmp/
