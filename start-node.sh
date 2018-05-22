@@ -38,6 +38,10 @@ if [[ -z "${RESEAL_ON_TXS}" ]]; then
   RESEAL_ON_TXS=all
 fi
 
+if [[ -z "${RESEAL_MAX_PERIOD}" ]]; then
+  RESEAL_MAX_PERIOD=120000
+fi
+
 if [[ -z "${FAT_DB}" ]]; then
   FAT_DB=auto
 fi
@@ -123,6 +127,14 @@ if [ ! -f "${ENGINE_SIGNER_KEY_PATH}" ]; then
 fi
 chmod 0600 "${ENGINE_SIGNER_KEY_PATH}"
 
+if [[ -z "${COINBASE}" ]]; then
+  COINBASE=0x0000000000000000000000000000000000000000
+fi
+
+if [[ -z "${IDENTITY}" ]]; then
+  IDENTITY=
+fi
+
 PARITY_BIN=$(which parity)
 if [ $? -eq 0 ]
 then
@@ -138,6 +150,7 @@ $PARITY_BIN --chain $CHAIN_SPEC \
             --auto-update $AUTO_UPDATE \
             --force-sealing \
             --reseal-on-txs $RESEAL_ON_TXS \
+            --reseal-max-period $RESEAL_MAX_PERIOD \
             --fat-db $FAT_DB \
             --pruning $PRUNING \
             --tracing $TRACING \
@@ -157,4 +170,6 @@ $PARITY_BIN --chain $CHAIN_SPEC \
             --ui-port $UI_PORT \
             --ui-hosts $UI_HOSTS \
             --engine-signer $ENGINE_SIGNER \
-            --password "${ENGINE_SIGNER_KEY_PATH}"
+            --password "${ENGINE_SIGNER_KEY_PATH}" \
+            --author $COINBASE \
+            --identity "${IDENTITY}"
