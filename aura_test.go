@@ -17,7 +17,7 @@ import (
 // and the integration of auth_os as a means to achieve a very high level of upgradeability
 // from the genesis block of newly-deployed networks.
 
-const masterOfCeremonyGenesisAddress string = "0x9077F27fDD606c41822f711231eEDA88317aa67a"
+var masterOfCeremonyGenesisAddress string = "0x9077F27fDD606c41822f711231eEDA88317aa67a"
 
 const registryStorageGenesisAddress string = "0x0000000000000000000000000000000000000009"
 const initRegistryGenesisAddress string = "0x0000000000000000000000000000000000000010"
@@ -48,7 +48,14 @@ var rpcURL string
 func TestMain(m *testing.M) {
 	var retval int
 	var err error
-	rpcURL, chainSpec, err = bootstrap(networkID, masterOfCeremonyGenesisAddress, expectedGenesisContractAccounts)
+
+	addr, privateKey, err := provide.GenerateKeyPair()
+	if err != nil {
+		teardown()
+		log.Fatalf("Failed to generate master of ceremony address; %s", err.Error())
+	}
+
+	rpcURL, chainSpec, err = bootstrap(networkID, *addr, privateKey, expectedGenesisContractAccounts)
 	if err != nil {
 		teardown()
 		log.Fatalf("%s", err.Error())
@@ -85,15 +92,36 @@ func TestDeployGenesisBlock(t *testing.T) {
 
 					assert.Nil(t, err)
 					assert.NotNil(t, deployedContractBytecode)
-					assert.True(
-						t,
-						strings.Contains(*deployedContractBytecode, expectedContractBytecode),
-						fmt.Sprintf("it should contain deployed contract bytecode for the %s contract as configured in the chainspec at %s", genesisContractAccountName, genesisContractAccountAddr),
-					)
+
+					if genesisContractAccountAddr != networkConsensusGenesisAddress {
+						assert.True(
+							t,
+							strings.Contains(*deployedContractBytecode, expectedContractBytecode),
+							fmt.Sprintf("it should contain deployed contract bytecode for the %s contract as configured in the chainspec at %s", genesisContractAccountName, genesisContractAccountAddr),
+						)
+					} else {
+						assert.True(
+							t,
+							*deployedContractBytecode != "0x",
+							fmt.Sprintf("it should contain deployed contract bytecode for the %s contract as configured in the chainspec at %s", genesisContractAccountName, genesisContractAccountAddr),
+						)
+					}
 				}
 			}
 		}
 	}
+}
+
+func TestMasterOfCeremonySigner(t *testing.T) {
+
+	blockNumber := provide.GetBlockNumber(networkID, rpcURL)
+	assert.NotNil(t, blockNumber)
+	assert.Equal(
+		t,
+		uint64(0),
+		*blockNumber,
+		"it should return 0",
+	)
 }
 
 func TestGetChainID(t *testing.T) {
