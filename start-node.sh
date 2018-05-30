@@ -124,11 +124,21 @@ fi
 
 if [ ! -f "${ENGINE_SIGNER_KEY_PATH}" ]; then
   touch "${ENGINE_SIGNER_KEY_PATH}"
+
+  if [[ ! -z "${ENGINE_SIGNER_PRIVATE_KEY}" ]]; then
+    echo "${ENGINE_SIGNER_PRIVATE_KEY}" > $ENGINE_SIGNER_KEY_PATH
+  fi
+
+  if [ ! -f "${ENGINE_SIGNER_KEY_JSON}" ]; then
+    mkdir -p "${BASE_PATH}/keys"
+    echo "${ENGINE_SIGNER_KEY_JSON}" > "${BASE_PATH}/keys/${ENGINE_SIGNER}.json"
+    chmod 0600 "${ENGINE_SIGNER_KEY_JSON}"
+  fi
 fi
 chmod 0600 "${ENGINE_SIGNER_KEY_PATH}"
 
 if [[ -z "${COINBASE}" ]]; then
-  COINBASE=0x0000000000000000000000000000000000000000
+  COINBASE=$ENGINE_SIGNER
 fi
 
 if [[ -z "${IDENTITY}" ]]; then
