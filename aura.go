@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -67,11 +68,68 @@ func deployNetwork(networkID, masterOfCeremony string, masterOfCeremonyPrivateKe
 	return rpcURL, err
 }
 
-func cachedChainspecJsonPath() string {
+func cachedChainspecPathPrefeix() string {
 	osRef := os.Getenv("OS_REF")
 	consensusRef := os.Getenv("NETWORK_CONSENSUS_REF")
-	filename := fmt.Sprintf("%s+%s", osRef, consensusRef)
-	return fmt.Sprintf("%s/%s.json", cachedChainspecPath, filename)
+	prefix := fmt.Sprintf("%s+%s", osRef, consensusRef)
+	return fmt.Sprintf("%s/%s", cachedChainspecPath, prefix)
+}
+
+func cachedChainspecJsonPath() string {
+	return fmt.Sprintf("%s.json", cachedChainspecPathPrefeix())
+}
+
+func cachedMasterOfCeremonyKeystorePath() string {
+	return fmt.Sprintf("%s-master-of-ceremony-key.json", cachedChainspecPathPrefeix())
+}
+
+func cachedMasterOfCeremonyPrivateKeyPath() string {
+	return fmt.Sprintf("%s-master-of-ceremony.key", cachedChainspecPathPrefeix())
+}
+
+func parseCachedMasterOfCeremonyKeystore() (map[string]interface{}, error) {
+	if !hasCachedMasterOfCeremony() {
+		return nil, errors.New("Unable to read cached master of ceremony keystore; no cached master of ceremony")
+	}
+	keystoreJSON, err := ioutil.ReadFile(cachedMasterOfCeremonyKeystorePath())
+	if err != nil {
+		return nil, err
+	}
+	var keystore map[string]interface{}
+	err = json.Unmarshal(keystoreJSON, &keystore)
+	if err != nil {
+		return nil, err
+	}
+	return keystore, nil
+}
+
+func parseCachedMasterOfCeremonyPrivateKey() (*ecdsa.PrivateKey, error) {
+	if !hasCachedMasterOfCeremony() {
+		return nil, errors.New("Unable to read cached master of ceremony private key; no cached master of ceremony")
+	}
+	privateKey, err := ioutil.ReadFile(cachedMasterOfCeremonyPrivateKeyPath())
+	if err != nil {
+		return nil, err
+	}
+	return ethcrypto.HexToECDSA(string(privateKey))
+}
+
+func hasCachedMasterOfCeremony() bool {
+	_, keystoreErr := os.Stat(cachedMasterOfCeremonyKeystorePath())
+	_, privateKeyErr := os.Stat(cachedMasterOfCeremonyPrivateKeyPath())
+	return keystoreErr == nil && privateKeyErr == nil
+}
+
+func cacheMasterOfCeremonyKeys(addr string, privateKey *ecdsa.PrivateKey) ([]byte, error) {
+	keystoreJSON, err := provide.MarshalEncryptedKey(common.HexToAddress(addr), privateKey, hex.EncodeToString(ethcrypto.FromECDSA(privateKey)))
+	if err == nil {
+		err = ioutil.WriteFile(cachedMasterOfCeremonyKeystorePath(), []byte(keystoreJSON), 0644)
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(cachedMasterOfCeremonyPrivateKeyPath(), []byte(hex.EncodeToString(ethcrypto.FromECDSA(privateKey))), 0644)
+	}
+	return keystoreJSON, err
 }
 
 // attempt to read a cached chainspec from .spec.json; if
@@ -94,13 +152,13 @@ func runNetworkNode(masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.P
 	cmd := exec.Command("bash", "-c", "./start-node.sh")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Env = append(os.Environ(), "LOGGING=debug")
-	if masterOfCeremony != "" {
+	if masterOfCeremony != "" && masterOfCeremonyPrivateKey != nil {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("ENGINE_SIGNER=%s", masterOfCeremony))
 		if masterOfCeremonyPrivateKey != nil {
-			keyPairJSON, err := provide.MarshalEncryptedKey(common.HexToAddress(masterOfCeremony), masterOfCeremonyPrivateKey, hex.EncodeToString(ethcrypto.FromECDSA(masterOfCeremonyPrivateKey)))
+
+			keystoreJSON, err := cacheMasterOfCeremonyKeys(masterOfCeremony, masterOfCeremonyPrivateKey)
 			if err == nil {
-				fmt.Printf("%s", keyPairJSON)
-				cmd.Env = append(cmd.Env, fmt.Sprintf("ENGINE_SIGNER_KEY_JSON=%s", keyPairJSON))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("ENGINE_SIGNER_KEY_JSON=%s", keystoreJSON))
 			}
 			cmd.Env = append(cmd.Env, fmt.Sprintf("ENGINE_SIGNER_PRIVATE_KEY=%s", hex.EncodeToString(ethcrypto.FromECDSA(masterOfCeremonyPrivateKey))))
 		}

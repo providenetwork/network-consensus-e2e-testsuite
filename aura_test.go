@@ -1,11 +1,13 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -17,7 +19,7 @@ import (
 // and the integration of auth_os as a means to achieve a very high level of upgradeability
 // from the genesis block of newly-deployed networks.
 
-var masterOfCeremonyGenesisAddress string = "0x9077F27fDD606c41822f711231eEDA88317aa67a"
+var masterOfCeremonyGenesisAddress string
 
 const registryStorageGenesisAddress string = "0x0000000000000000000000000000000000000009"
 const initRegistryGenesisAddress string = "0x0000000000000000000000000000000000000010"
@@ -28,6 +30,8 @@ const auraGenesisAddress string = "0x0000000000000000000000000000000000000014"
 const validatorConsoleGenesisAddress string = "0x0000000000000000000000000000000000000015"
 const votingConsoleGenesisAddress string = "0x0000000000000000000000000000000000000016"
 const networkConsensusGenesisAddress string = "0x0000000000000000000000000000000000000017"
+
+const defaultStepsUnderTest int = 5 // default number of sealed blocks to test against (certain cases wait for defaultStepsUnderTest * stepDuration)
 
 var expectedGenesisContractAccounts = map[string]string{
 	"RegistryStorage":       registryStorageGenesisAddress,
@@ -48,14 +52,28 @@ var rpcURL string
 func TestMain(m *testing.M) {
 	var retval int
 	var err error
+	var privateKey *ecdsa.PrivateKey
 
-	addr, privateKey, err := provide.GenerateKeyPair()
-	if err != nil {
-		teardown()
-		log.Fatalf("Failed to generate master of ceremony address; %s", err.Error())
+	if !hasCachedMasterOfCeremony() {
+		var addr *string
+		addr, privateKey, err = provide.GenerateKeyPair()
+		if err != nil {
+			teardown()
+			log.Fatalf("Failed to generate master of ceremony address; %s", err.Error())
+		}
+		masterOfCeremonyGenesisAddress = *addr
+	} else {
+		keystore, err := parseCachedMasterOfCeremonyKeystore()
+		if err == nil {
+			masterOfCeremonyGenesisAddress = fmt.Sprintf("0x%s", keystore["address"])
+			privateKey, err = parseCachedMasterOfCeremonyPrivateKey()
+		}
 	}
 
-	rpcURL, chainSpec, err = bootstrap(networkID, *addr, privateKey, expectedGenesisContractAccounts)
+	if err == nil {
+		rpcURL, chainSpec, err = bootstrap(networkID, masterOfCeremonyGenesisAddress, privateKey, expectedGenesisContractAccounts)
+	}
+
 	if err != nil {
 		teardown()
 		log.Fatalf("%s", err.Error())
@@ -112,16 +130,27 @@ func TestDeployGenesisBlock(t *testing.T) {
 	}
 }
 
-func TestMasterOfCeremonySigner(t *testing.T) {
+func testWhileSealing(nBlocks int, test func(int)) {
+	offset := int(*provide.GetBlockNumber(networkID, rpcURL)) // block from which test case started; used to offset the current block for assertion purposes
+	i := 0
+	for i < nBlocks {
+		test(offset + i)
+		i++
+		time.Sleep(time.Second * 5) // FIXME-- use stepDuration dynamically as configured in chainspec
+	}
+}
 
-	blockNumber := provide.GetBlockNumber(networkID, rpcURL)
-	assert.NotNil(t, blockNumber)
-	assert.Equal(
-		t,
-		uint64(0),
-		*blockNumber,
-		"it should return 0",
-	)
+func TestMasterOfCeremonySigner(t *testing.T) {
+	testWhileSealing(defaultStepsUnderTest, func(block int) {
+		blockNumber := provide.GetBlockNumber(networkID, rpcURL)
+		assert.NotNil(t, blockNumber)
+		assert.Equal(
+			t,
+			uint64(block),
+			*blockNumber,
+			fmt.Sprintf("it should return %v", block),
+		)
+	})
 }
 
 func TestGetChainID(t *testing.T) {
@@ -136,25 +165,29 @@ func TestGetChainID(t *testing.T) {
 }
 
 func TestGetBlockNumber(t *testing.T) {
-	blockNumber := provide.GetBlockNumber(networkID, rpcURL)
-	assert.NotNil(t, blockNumber)
-	assert.Equal(
-		t,
-		uint64(0),
-		*blockNumber,
-		"it should return 0",
-	)
+	testWhileSealing(2, func(expectedBlock int) {
+		blockNumber := provide.GetBlockNumber(networkID, rpcURL)
+		assert.NotNil(t, blockNumber)
+		assert.Equal(
+			t,
+			uint64(expectedBlock),
+			*blockNumber,
+			fmt.Sprintf("it should return %v", expectedBlock),
+		)
+	})
 }
 
 func TestGetLatestBlock(t *testing.T) {
-	latestBlock, err := provide.GetLatestBlock(networkID, rpcURL)
-	assert.Nil(t, err)
-	assert.Equal(
-		t,
-		uint64(0),
-		latestBlock,
-		"it should return 0",
-	)
+	testWhileSealing(2, func(expectedBlock int) {
+		latestBlock, err := provide.GetLatestBlock(networkID, rpcURL)
+		assert.Nil(t, err)
+		assert.Equal(
+			t,
+			uint64(expectedBlock),
+			latestBlock,
+			fmt.Sprintf("it should return %v", expectedBlock),
+		)
+	})
 }
 
 func TestGetNetworkStatus(t *testing.T) {
@@ -173,7 +206,7 @@ func TestGetNetworkStatus(t *testing.T) {
 	assert.NotNil(t, status.Block)
 	assert.Equal(
 		t,
-		uint64(0),
+		*provide.GetBlockNumber(networkID, rpcURL),
 		status.Block,
 		"it should include the latest block number",
 	)
