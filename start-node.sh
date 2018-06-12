@@ -6,13 +6,30 @@ if [[ -z "${BASE_PATH}" ]]; then
   BASE_PATH=$PWD
 fi
 
-if [[ -z "${CHAIN_SPEC}" ]]; then
-  CHAIN_SPEC=spec.json
+if [[ -z "${CHAIN}" ]]; then
+  CHAIN=mainnet
 fi
 
-if [[ -z "${BOOTNODES}" ]]; then
-  BOOTNODES=
+if [[ -z "${CHAIN_SPEC}" ]]; then
+  CHAIN_SPEC=spec.json
+
+  if [ ! -f "${CHAIN_SPEC}" ] || [ ! -s "${CHAIN_SPEC}" ]; then
+    if [[ -z "${CHAIN_SPEC_URL}" ]]; then
+      CHAIN_SPEC_URL="https://raw.githubusercontent.com/providenetwork/chain-spec/${CHAIN}/spec.json"
+    fi
+    curl -L "${CHAIN_SPEC_URL}" > "${CHAIN_SPEC}" 2> /dev/null
+  fi
 fi
+
+# if [[ -z "${BOOTNODES}" ]]; then
+#   if [ ! -f bootnodes.txt ] || [ ! -s bootnodes.txt ]; then
+#     if [[ -z "${BOOTNODES_URL}" ]]; then
+#       BOOTNODES_URL="https://raw.githubusercontent.com/providenetwork/chain-spec/${CHAIN}/bootnodes.txt"
+#     fi
+#     curl -L "${BOOTNODES_URL}" > bootnodes.txt 2> /dev/null
+#     BOOTNODES=$(cat bootnodes.txt)
+#   fi
+# fi
 
 if [[ -z "${LOGGING}" ]]; then
   LOGGING=warning
@@ -98,18 +115,6 @@ if [[ -z "${WS_ORIGINS}" ]]; then
   WS_ORIGINS=all
 fi
 
-if [[ -z "${UI_INTERFACE}" ]]; then
-  UI_INTERFACE=all
-fi
-
-if [[ -z "${UI_PORT}" ]]; then
-  UI_PORT=8052
-fi
-
-if [[ -z "${UI_HOSTS}" ]]; then
-  UI_HOSTS=all
-fi
-
 if [[ -z "${JSON_RPC_APIS}" ]]; then
   JSON_RPC_APIS=web3,eth,net,personal,parity,parity_set,traces,rpc,parity_accounts
 fi
@@ -129,10 +134,10 @@ if [ ! -f "${ENGINE_SIGNER_KEY_PATH}" ]; then
     echo "${ENGINE_SIGNER_PRIVATE_KEY}" > $ENGINE_SIGNER_KEY_PATH
   fi
 
-  if [ ! -f "${ENGINE_SIGNER_KEY_JSON}" ]; then
+  if [[ ! -z "${ENGINE_SIGNER_KEY_JSON}" ]]; then
     mkdir -p "${BASE_PATH}/keys"
     echo "${ENGINE_SIGNER_KEY_JSON}" > "${BASE_PATH}/keys/${ENGINE_SIGNER}.json"
-    chmod 0600 "${ENGINE_SIGNER_KEY_JSON}"
+    chmod 0600 "${BASE_PATH}/keys/${ENGINE_SIGNER}.json"
   fi
 fi
 chmod 0600 "${ENGINE_SIGNER_KEY_PATH}"
@@ -176,9 +181,6 @@ $PARITY_BIN --chain $CHAIN_SPEC \
             --ws-interface $WS_INTERFACE \
             --ws-hosts $WS_HOSTS \
             --ws-origins $WS_ORIGINS \
-            --ui-interface $UI_INTERFACE \
-            --ui-port $UI_PORT \
-            --ui-hosts $UI_HOSTS \
             --engine-signer $ENGINE_SIGNER \
             --password "${ENGINE_SIGNER_KEY_PATH}" \
             --author $COINBASE \

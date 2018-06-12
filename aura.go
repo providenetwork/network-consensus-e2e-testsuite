@@ -14,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
@@ -23,6 +24,7 @@ import (
 const cachedChainspecPath = "./.spec"
 const parentPidPath = "./.pid"
 const tmpChainspecPath = "./.tmp/spec.json"
+const tmpChainspecABIPath = "./.tmp/spec.abi.json"
 const tmpWorkdirPath = "./.tmp"
 
 var (
@@ -33,11 +35,14 @@ var (
 // entrypoint to deploy the blockchain network which will be placed under test;
 // uses the given chain spec as the genesis block, starts the initial JSON-RPC client
 // and returns the JSON-RPC url where it is listening
-func deployNetwork(networkID, masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.PrivateKey, spec []byte) (string, error) {
+func deployNetwork(networkID, masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.PrivateKey, spec []byte, abi []byte) (string, error) {
 	var rpcURL string
 	var err error
 
 	err = ioutil.WriteFile(tmpChainspecPath, spec, 0644)
+	if err == nil {
+		err = ioutil.WriteFile(tmpChainspecABIPath, abi, 0644)
+	}
 	if err == nil {
 		rpcURL = fmt.Sprintf("http://localhost:%v", rpcPort)
 		go func() {
@@ -47,9 +52,12 @@ func deployNetwork(networkID, masterOfCeremony string, masterOfCeremonyPrivateKe
 		var pid int
 		for pid == 0 {
 			if len(nodes) > 0 {
-				proc := nodes[len(nodes)-1].Process
-				if proc != nil {
-					pid = proc.Pid
+				node := nodes[len(nodes)-1]
+				if node != nil {
+					proc := node.Process
+					if proc != nil {
+						pid = proc.Pid
+					}
 				}
 			}
 		}
@@ -77,6 +85,10 @@ func cachedChainspecPathPrefeix() string {
 
 func cachedChainspecJsonPath() string {
 	return fmt.Sprintf("%s.json", cachedChainspecPathPrefeix())
+}
+
+func cachedChainspecAbiJsonPath() string {
+	return fmt.Sprintf("%s.abi.json", cachedChainspecPathPrefeix())
 }
 
 func cachedMasterOfCeremonyKeystorePath() string {
@@ -114,6 +126,21 @@ func parseCachedMasterOfCeremonyPrivateKey() (*ecdsa.PrivateKey, error) {
 	return ethcrypto.HexToECDSA(string(privateKey))
 }
 
+func parseNetworkConsensusABI() (abi.ABI, error) {
+	cachedABI, err := readCachedChainspecABI()
+	if err == nil {
+		var chainspecABI map[string]interface{}
+		err = json.Unmarshal(cachedABI, &chainspecABI)
+		if err == nil {
+			abiJSON, err := json.Marshal(chainspecABI[networkConsensusGenesisAddress])
+			if err == nil {
+				return abi.JSON(strings.NewReader(string(abiJSON)))
+			}
+		}
+	}
+	return abi.ABI{}, err
+}
+
 func hasCachedMasterOfCeremony() bool {
 	_, keystoreErr := os.Stat(cachedMasterOfCeremonyKeystorePath())
 	_, privateKeyErr := os.Stat(cachedMasterOfCeremonyPrivateKeyPath())
@@ -134,7 +161,7 @@ func cacheMasterOfCeremonyKeys(addr string, privateKey *ecdsa.PrivateKey) ([]byt
 
 // attempt to read a cached chainspec from .spec.json; if
 // one exists, it will be reused to elimninate the need to
-// compile auth_os and network consensus contracts from source.
+// compile the os and network consensus contracts from source.
 // running `make clean` or simply removing spec.json will result
 // in spec.json being rebuilt
 func readCachedChainspec() ([]byte, error) {
@@ -147,6 +174,16 @@ func readCachedChainspec() ([]byte, error) {
 	return spec, err
 }
 
+func readCachedChainspecABI() ([]byte, error) {
+	var abi []byte
+	var err error
+	chainspecABIPath := cachedChainspecAbiJsonPath()
+	if _, err = os.Stat(chainspecABIPath); err == nil {
+		abi, err = ioutil.ReadFile(chainspecABIPath)
+	}
+	return abi, err
+}
+
 // start a parity peer on the given network under test;
 func runNetworkNode(masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.PrivateKey) {
 	cmd := exec.Command("bash", "-c", "./start-node.sh")
@@ -155,7 +192,6 @@ func runNetworkNode(masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.P
 	if masterOfCeremony != "" && masterOfCeremonyPrivateKey != nil {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("ENGINE_SIGNER=%s", masterOfCeremony))
 		if masterOfCeremonyPrivateKey != nil {
-
 			keystoreJSON, err := cacheMasterOfCeremonyKeys(masterOfCeremony, masterOfCeremonyPrivateKey)
 			if err == nil {
 				cmd.Env = append(cmd.Env, fmt.Sprintf("ENGINE_SIGNER_KEY_JSON=%s", keystoreJSON))
@@ -182,6 +218,7 @@ func runNetworkNode(masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.P
 func bootstrap(networkID, masterOfCeremony string, masterOfCeremonyPrivateKey *ecdsa.PrivateKey, genesisContractAccounts map[string]string) (string, map[string]interface{}, error) {
 	var rpcURL string
 	var spec []byte
+	var abi []byte
 	var parsedSpec map[string]interface{}
 	var err error
 	terminateOrphans()
@@ -191,13 +228,20 @@ func bootstrap(networkID, masterOfCeremony string, masterOfCeremonyPrivateKey *e
 		osRef := os.Getenv("OS_REF")
 		consensusRef := os.Getenv("NETWORK_CONSENSUS_REF")
 		log.Printf("Compiling auth_os and network consensus contracts from source (using revisions %s and %s, respectively) for inclusion in custom spec.json", osRef, consensusRef)
-		spec, err = provide.BuildChainspec(osRef, consensusRef, masterOfCeremony, genesisContractAccounts)
+		spec, abi, err = provide.BuildChainspec(osRef, consensusRef, masterOfCeremony, genesisContractAccounts)
 		err = ioutil.WriteFile(cachedChainspecJsonPath(), spec, 0644)
+		if err == nil {
+			err = ioutil.WriteFile(cachedChainspecAbiJsonPath(), abi, 0644)
+		}
 	} else {
 		log.Printf("Using cached spec.json from previous run")
+		abi, err = readCachedChainspecABI()
+		if err != nil {
+			log.Printf("No cached spec.abi.json from previous run")
+		}
 	}
 	if err == nil {
-		rpcURL, err = deployNetwork(networkID, masterOfCeremony, masterOfCeremonyPrivateKey, spec)
+		rpcURL, err = deployNetwork(networkID, masterOfCeremony, masterOfCeremonyPrivateKey, spec, abi)
 	}
 	if err == nil {
 		err = json.Unmarshal(spec, &parsedSpec)

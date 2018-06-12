@@ -1,14 +1,14 @@
 package main
 
 import (
-	"crypto/ecdsa"
 	"fmt"
-	"log"
+	"math/big"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/provideservices/provide-go"
@@ -19,70 +19,11 @@ import (
 // and the integration of auth_os as a means to achieve a very high level of upgradeability
 // from the genesis block of newly-deployed networks.
 
-var masterOfCeremonyGenesisAddress string
-
-const registryStorageGenesisAddress string = "0x0000000000000000000000000000000000000009"
-const initRegistryGenesisAddress string = "0x0000000000000000000000000000000000000010"
-const appConsoleGenesisAddress string = "0x0000000000000000000000000000000000000011"
-const versionConsoleGenesisAddress string = "0x0000000000000000000000000000000000000012"
-const implementationConsoleGenesisAddress string = "0x0000000000000000000000000000000000000013"
-const auraGenesisAddress string = "0x0000000000000000000000000000000000000014"
-const validatorConsoleGenesisAddress string = "0x0000000000000000000000000000000000000015"
-const votingConsoleGenesisAddress string = "0x0000000000000000000000000000000000000016"
-const networkConsensusGenesisAddress string = "0x0000000000000000000000000000000000000017"
-
-const defaultStepsUnderTest int = 5 // default number of sealed blocks to test against (certain cases wait for defaultStepsUnderTest * stepDuration)
-
-var expectedGenesisContractAccounts = map[string]string{
-	"RegistryStorage":       registryStorageGenesisAddress,
-	"InitRegistry":          initRegistryGenesisAddress,
-	"AppConsole":            appConsoleGenesisAddress,
-	"VersionConsole":        versionConsoleGenesisAddress,
-	"ImplementationConsole": implementationConsoleGenesisAddress,
-	"Aura":                  auraGenesisAddress,
-	"ValidatorConsole":      validatorConsoleGenesisAddress,
-	"VotingConsole":         votingConsoleGenesisAddress,
-	"NetworkConsensus":      networkConsensusGenesisAddress,
-}
-
-var chainSpec map[string]interface{}
-var networkID = "arbitraryidentifier"
-var rpcURL string
+const defaultStepsUnderTest int = 1 // default number of sealed blocks to test against (certain cases wait for defaultStepsUnderTest * stepDuration)
 
 func TestMain(m *testing.M) {
 	var retval int
-	var err error
-	var privateKey *ecdsa.PrivateKey
-
-	if !hasCachedMasterOfCeremony() {
-		var addr *string
-		addr, privateKey, err = provide.GenerateKeyPair()
-		if err != nil {
-			teardown()
-			log.Fatalf("Failed to generate master of ceremony address; %s", err.Error())
-		}
-		masterOfCeremonyGenesisAddress = *addr
-	} else {
-		keystore, err := parseCachedMasterOfCeremonyKeystore()
-		if err == nil {
-			masterOfCeremonyGenesisAddress = fmt.Sprintf("0x%s", keystore["address"])
-			privateKey, err = parseCachedMasterOfCeremonyPrivateKey()
-		}
-	}
-
-	if err == nil {
-		rpcURL, chainSpec, err = bootstrap(networkID, masterOfCeremonyGenesisAddress, privateKey, expectedGenesisContractAccounts)
-	}
-
-	if err != nil {
-		teardown()
-		log.Fatalf("%s", err.Error())
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			teardown()
-		}
-	}()
+	main()
 	retval = m.Run()
 	teardown()
 	os.Exit(retval)
@@ -94,7 +35,7 @@ func TestDeployGenesisBlock(t *testing.T) {
 		assert.True(t, accountOk)
 		assert.NotNil(t, masterOfCeremonyAccount)
 
-		for genesisContractAccountName, genesisContractAccountAddr := range expectedGenesisContractAccounts {
+		for genesisContractAccountName, genesisContractAccountAddr := range genesisContractAccounts {
 			genesisContractAccount, accountOk := accounts[genesisContractAccountAddr].(map[string]interface{})
 			assert.True(t, accountOk, "it should contain a %s contract account in the chainspec at %s", genesisContractAccountName, genesisContractAccountAddr) // expected address appeared in genesis block
 			if accountOk {
@@ -130,18 +71,109 @@ func TestDeployGenesisBlock(t *testing.T) {
 	}
 }
 
-func testWhileSealing(nBlocks int, test func(int)) {
+func testWhileSealing(nBlocks int, test func(int, int)) {
 	offset := int(*provide.GetBlockNumber(networkID, rpcURL)) // block from which test case started; used to offset the current block for assertion purposes
 	i := 0
 	for i < nBlocks {
-		test(offset + i)
+		test(i, offset+i)
 		i++
 		time.Sleep(time.Second * 5) // FIXME-- use stepDuration dynamically as configured in chainspec
 	}
 }
 
+func getValidators(t *testing.T) ([]common.Address, error) {
+	_abi, err := parseNetworkConsensusABI()
+	assert.Nil(t, err)
+	assert.NotNil(t, _abi)
+
+	var _params []interface{}
+	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "getValidators", &_abi, _params)
+	assert.Nil(t, err)
+
+	validators, validatorsOk := (*resp).([]common.Address)
+	assert.True(t, validatorsOk)
+
+	return validators, nil
+}
+
+func getValidatorCount(t *testing.T) (uint64, error) {
+	_abi, err := parseNetworkConsensusABI()
+	assert.Nil(t, err)
+	assert.NotNil(t, _abi)
+
+	var _params []interface{}
+	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "getValidatorCount", &_abi, _params)
+	assert.Nil(t, err)
+
+	validatorCount, countOk := (*resp).(*big.Int)
+	assert.True(t, countOk)
+
+	return validatorCount.Uint64(), nil
+}
+
+func getValidatorSupportCount(t *testing.T, addr string) (uint64, error) {
+	_abi, err := parseNetworkConsensusABI()
+	assert.Nil(t, err)
+	assert.NotNil(t, _abi)
+
+	var _params []interface{}
+	_params = append(_params, addr)
+	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "getValidatorSupportCount", &_abi, _params)
+	assert.Nil(t, err)
+
+	supportCount, supportCountOk := (*resp).(*big.Int)
+	assert.True(t, supportCountOk)
+
+	return supportCount.Uint64(), nil
+}
+
+func getValidatorSupportDivisor(t *testing.T) (uint64, error) {
+	_abi, err := parseNetworkConsensusABI()
+	assert.Nil(t, err)
+	assert.NotNil(t, _abi)
+
+	var _params []interface{}
+	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "getValidatorSupportDivisor", &_abi, _params)
+	assert.Nil(t, err)
+
+	divisor, divisorOk := (*resp).(*big.Int)
+	assert.True(t, divisorOk)
+
+	return divisor.Uint64(), nil
+}
+
+func getPendingValidators(t *testing.T) ([]common.Address, error) {
+	_abi, err := parseNetworkConsensusABI()
+	assert.Nil(t, err)
+	assert.NotNil(t, _abi)
+
+	var _params []interface{}
+	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "getPendingValidators", &_abi, _params)
+	assert.Nil(t, err)
+
+	validators, validatorsOk := (*resp).([]common.Address)
+	assert.True(t, validatorsOk)
+
+	return validators, nil
+}
+
+func getPendingValidatorCount(t *testing.T) (uint64, error) {
+	_abi, err := parseNetworkConsensusABI()
+	assert.Nil(t, err)
+	assert.NotNil(t, _abi)
+
+	var _params []interface{}
+	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "getPendingValidatorCount", &_abi, _params)
+	assert.Nil(t, err)
+
+	validatorCount, countOk := (*resp).(*big.Int)
+	assert.True(t, countOk)
+
+	return validatorCount.Uint64(), nil
+}
+
 func TestMasterOfCeremonySigner(t *testing.T) {
-	testWhileSealing(defaultStepsUnderTest, func(block int) {
+	testWhileSealing(defaultStepsUnderTest, func(i, block int) {
 		blockNumber := provide.GetBlockNumber(networkID, rpcURL)
 		assert.NotNil(t, blockNumber)
 		assert.Equal(
@@ -150,6 +182,45 @@ func TestMasterOfCeremonySigner(t *testing.T) {
 			*blockNumber,
 			fmt.Sprintf("it should return %v", block),
 		)
+	})
+
+	_abi, err := parseNetworkConsensusABI()
+	assert.NotNil(t, _abi)
+
+	masterOfCeremonySupportCount, err := getValidatorSupportCount(t, masterOfCeremonyGenesisAddress)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(1), masterOfCeremonySupportCount)
+
+	validatorSupportDivisor, err := getValidatorSupportDivisor(t)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(2), validatorSupportDivisor)
+
+	// ADD A VALIDATOR...
+	validator, _, err := provide.GenerateKeyPair()
+	assert.Nil(t, err)
+	var params []interface{}
+	params = append(params, *validator)
+	_, err = provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "addValidator", &_abi, params)
+	assert.Nil(t, err)
+
+	testWhileSealing(2, func(i, block int) {
+		if i == 1 {
+			// validatorSupportCount, err := getValidatorSupportCount(t, *validator)
+			// assert.Nil(t, err)
+			// assert.Equal(t, uint64(1), validatorSupportCount)
+
+			validators, _ := getValidators(t)
+			validatorCount, _ := getValidatorCount(t)
+			assert.Equal(t, 1, len(validators))
+			assert.Equal(t, uint64(len(validators)), validatorCount)
+
+			pendingValidators, _ := getPendingValidators(t)
+			fmt.Printf("pending validators: %s", pendingValidators)
+
+			pendingValidatorCount, _ := getPendingValidatorCount(t)
+			assert.Equal(t, 2, len(pendingValidators))
+			assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
+		}
 	})
 }
 
@@ -165,27 +236,29 @@ func TestGetChainID(t *testing.T) {
 }
 
 func TestGetBlockNumber(t *testing.T) {
-	testWhileSealing(2, func(expectedBlock int) {
+	testWhileSealing(2, func(i, block int) {
 		blockNumber := provide.GetBlockNumber(networkID, rpcURL)
 		assert.NotNil(t, blockNumber)
 		assert.Equal(
 			t,
-			uint64(expectedBlock),
+			uint64(block),
 			*blockNumber,
-			fmt.Sprintf("it should return %v", expectedBlock),
+			fmt.Sprintf("it should return %v", block),
 		)
 	})
 }
 
 func TestGetLatestBlock(t *testing.T) {
-	testWhileSealing(2, func(expectedBlock int) {
+	testWhileSealing(2, func(i, block int) {
 		latestBlock, err := provide.GetLatestBlock(networkID, rpcURL)
+		assert.Nil(t, err)
+		actual, err := hexutil.DecodeUint64(latestBlock.Result.(map[string]interface{})["number"].(string))
 		assert.Nil(t, err)
 		assert.Equal(
 			t,
-			uint64(expectedBlock),
-			latestBlock,
-			fmt.Sprintf("it should return %v", expectedBlock),
+			uint64(block),
+			actual,
+			fmt.Sprintf("it should return %v", block),
 		)
 	})
 }
@@ -196,10 +269,13 @@ func TestGetNetworkStatus(t *testing.T) {
 	assert.NotNil(t, status)
 
 	assert.NotNil(t, status.ChainID)
+	chainID, _ := hexutil.DecodeUint64(*status.ChainID)
+	actual, err := hexutil.DecodeUint64(chainSpec["params"].(map[string]interface{})["networkID"].(string))
+	assert.Nil(t, err)
 	assert.Equal(
 		t,
-		chainSpec["params"].(map[string]interface{})["networkID"],
-		hexutil.EncodeBig(status.ChainID),
+		chainID,
+		actual,
 		"it should include the networkID as configured in the chainspec",
 	)
 
@@ -247,6 +323,23 @@ func TestGetPeerCount(t *testing.T) {
 func TestGetProtocolVersion(t *testing.T) {
 	protocolVersion := provide.GetProtocolVersion(networkID, rpcURL)
 	assert.NotNil(t, protocolVersion)
+}
+
+func TestAddValidator(t *testing.T) {
+	testWhileSealing(1, func(i, block int) {
+		networkConsensusABI, _ := parseNetworkConsensusABI()
+		var _params []interface{}
+		_params = append(_params, "0x87b7af6915fa56a837fa85e31ad6a450c41e8fab")
+		_, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), nil, nil, "addValidator", networkConsensusABI, _params)
+		assert.Nil(t, err)
+		// fmt.Printf("resp: %s", response)
+		// assert.Equal(
+		// 	t,
+		// 	uint64(block),
+		// 	latestBlock,
+		// 	fmt.Sprintf("it should add the validator %v", block),
+		// )
+	})
 }
 
 // func TestTraceTx(t *testing.T) {

@@ -25,6 +25,11 @@ _cgo_export.*
 *.iml
 
 network-consensus-e2e-testsuite
+
 .spec/
 .tmp/
 .pid
+
+*.key
+
+test-unicorn.sh
