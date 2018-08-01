@@ -10,37 +10,33 @@ import (
 	provide "github.com/provideservices/provide-go"
 )
 
-const registryStorageGenesisAddress string = "0x0000000000000000000000000000000000000009"
-const initRegistryGenesisAddress string = "0x0000000000000000000000000000000000000010"
-const appConsoleGenesisAddress string = "0x0000000000000000000000000000000000000011"
-const versionConsoleGenesisAddress string = "0x0000000000000000000000000000000000000012"
-const implConsoleGenesisAddress string = "0x0000000000000000000000000000000000000013"
+const abstractStorageGenesisAddress string = "0x0000000000000000000000000000000000000009"
+const registryIdxGenesisAddress string = "0x0000000000000000000000000000000000000010"
+const providerGenesisAddress string = "0x0000000000000000000000000000000000000011"
 
-const auraGenesisAddress string = "0x0000000000000000000000000000000000000014"
-const validatorConsoleGenesisAddress string = "0x0000000000000000000000000000000000000015"
-const votingConsoleGenesisAddress string = "0x0000000000000000000000000000000000000016"
-const initBridgesGenesisAddress string = "0x0000000000000000000000000000000000000017"
-const bridgesConsoleGenesisAddress string = "0x0000000000000000000000000000000000000018"
-const oraclesConsoleGenesisAddress string = "0x0000000000000000000000000000000000000019"
-const networkConsensusGenesisAddress string = "0x0000000000000000000000000000000000000020"
+const auraGenesisAddress string = "0x0000000000000000000000000000000000000012"
+const validatorConsoleGenesisAddress string = "0x0000000000000000000000000000000000000013"
+const votingConsoleGenesisAddress string = "0x0000000000000000000000000000000000000014"
+const initBridgesGenesisAddress string = "0x0000000000000000000000000000000000000015"
+const bridgesConsoleGenesisAddress string = "0x0000000000000000000000000000000000000016"
+const oraclesConsoleGenesisAddress string = "0x0000000000000000000000000000000000000017"
+const networkConsensusGenesisAddress string = "0x0000000000000000000000000000000000000018"
 
 var networkID = "arbitraryidentifier"
 var rpcURL string
 var chainSpec map[string]interface{}
 var masterOfCeremonyGenesisAddress string
 var genesisContractAccounts = map[string]string{
-	"RegistryStorage":       registryStorageGenesisAddress,
-	"InitRegistry":          initRegistryGenesisAddress,
-	"AppConsole":            appConsoleGenesisAddress,
-	"VersionConsole":        versionConsoleGenesisAddress,
-	"ImplementationConsole": implConsoleGenesisAddress,
-	"Aura":                  auraGenesisAddress,
-	"ValidatorConsole":      validatorConsoleGenesisAddress,
-	"VotingConsole":         votingConsoleGenesisAddress,
-	"InitBridges":           initBridgesGenesisAddress,
-	"BridgesConsole":        bridgesConsoleGenesisAddress,
-	"OraclesConsole":        oraclesConsoleGenesisAddress,
-	"NetworkConsensus":      networkConsensusGenesisAddress,
+	"AbstractStorage":  abstractStorageGenesisAddress,
+	"RegistryIdx":      registryIdxGenesisAddress,
+	"Provider":         providerGenesisAddress,
+	"Aura":             auraGenesisAddress,
+	"ValidatorConsole": validatorConsoleGenesisAddress,
+	"VotingConsole":    votingConsoleGenesisAddress,
+	"InitBridges":      initBridgesGenesisAddress,
+	"BridgesConsole":   bridgesConsoleGenesisAddress,
+	"OraclesConsole":   oraclesConsoleGenesisAddress,
+	"NetworkConsensus": networkConsensusGenesisAddress,
 }
 
 func main() {
