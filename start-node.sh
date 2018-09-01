@@ -95,6 +95,14 @@ if [[ -z "${JSON_RPC_CORS}" ]]; then
   JSON_RPC_CORS=all
 fi
 
+if [[ -z "${JSON_RPC_THREADS}" ]]; then
+  JSON_RPC_THREADS=4
+fi
+
+if [[ -z "${JSON_RPC_SERVER_THREADS}" ]]; then
+  JSON_RPC_SERVER_THREADS=1024
+fi
+
 if [[ -z "${IPFS_API_INTERFACE}" ]]; then
   IPFS_API_INTERFACE=0.0.0.0
 fi
@@ -117,6 +125,10 @@ fi
 
 if [[ -z "${WS_PORT}" ]]; then
   WS_PORT=8051
+fi
+
+if [[ -z "${WS_MAX_CONNECTIONS}" ]]; then
+  WS_MAX_CONNECTIONS=1024
 fi
 
 if [[ -z "${WS_INTERFACE}" ]]; then
@@ -192,6 +204,8 @@ $PARITY_BIN --chain $CHAIN_SPEC \
             --jsonrpc-port $JSON_RPC_PORT \
             --jsonrpc-hosts $JSON_RPC_HOSTS \
             --jsonrpc-cors $JSON_RPC_CORS \
+            --jsonrpc-server-threads $JSON_RPC_SERVER_THREADS \
+            --jsonrpc-threads $JSON_RPC_THREADS \
             --ipfs-api \
             --ipfs-api-interface $IPFS_API_INTERFACE \
             --ipfs-api-port $IPFS_API_PORT \
@@ -202,6 +216,7 @@ $PARITY_BIN --chain $CHAIN_SPEC \
             --ws-interface $WS_INTERFACE \
             --ws-hosts $WS_HOSTS \
             --ws-origins $WS_ORIGINS \
+            --ws-max-connections $WS_MAX_CONNECTIONS \
             --engine-signer $ENGINE_SIGNER \
             --password "${ENGINE_SIGNER_KEY_PATH}" \
             --author $COINBASE \
