@@ -95,6 +95,22 @@ if [[ -z "${JSON_RPC_CORS}" ]]; then
   JSON_RPC_CORS=all
 fi
 
+if [[ -z "${IPFS_API_INTERFACE}" ]]; then
+  IPFS_API_INTERFACE=0.0.0.0
+fi
+
+if [[ -z "${IPFS_API_PORT}" ]]; then
+  IPFS_API_PORT=5001
+fi
+
+if [[ -z "${IPFS_API_CORS}" ]]; then
+  IPFS_API_CORS=all
+fi
+
+if [[ -z "${IPFS_API_HOSTS}" ]]; then
+  IPFS_API_HOSTS=all
+fi
+
 if [[ -z "${WS_APIS}" ]]; then
   WS_APIS=web3,eth,pubsub,net,parity,parity_pubsub,traces,rpc,shh,shh_pubsub
 fi
@@ -176,6 +192,11 @@ $PARITY_BIN --chain $CHAIN_SPEC \
             --jsonrpc-port $JSON_RPC_PORT \
             --jsonrpc-hosts $JSON_RPC_HOSTS \
             --jsonrpc-cors $JSON_RPC_CORS \
+            --ipfs-api \
+            --ipfs-api-interface $IPFS_API_INTERFACE \
+            --ipfs-api-port $IPFS_API_PORT \
+            --ipfs-api-cors $IPFS_API_CORS \
+            --ipfs-api-hosts $IPFS_API_HOSTS \
             --ws-apis $WS_APIS \
             --ws-port $WS_PORT \
             --ws-interface $WS_INTERFACE \
