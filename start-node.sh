@@ -21,15 +21,15 @@ if [[ -z "${CHAIN_SPEC}" ]]; then
   fi
 fi
 
-# if [[ -z "${BOOTNODES}" ]]; then
-#   if [ ! -f bootnodes.txt ] || [ ! -s bootnodes.txt ]; then
-#     if [[ -z "${BOOTNODES_URL}" ]]; then
-#       BOOTNODES_URL="https://raw.githubusercontent.com/providenetwork/chain-spec/${CHAIN}/bootnodes.txt"
-#     fi
-#     curl -L "${BOOTNODES_URL}" > bootnodes.txt 2> /dev/null
-#     BOOTNODES=$(cat bootnodes.txt)
-#   fi
-# fi
+if [[ -z "${BOOTNODES}" ]]; then
+  if [ ! -f bootnodes.txt ] || [ ! -s bootnodes.txt ]; then
+    if [[ -z "${BOOTNODES_URL}" ]]; then
+      BOOTNODES_URL="https://raw.githubusercontent.com/providenetwork/chain-spec/${CHAIN}/bootnodes.txt"
+    fi
+    curl -L "${BOOTNODES_URL}" > bootnodes.txt 2> /dev/null
+    BOOTNODES=$(cat bootnodes.txt)
+  fi
+fi
 
 if [[ -z "${LOGGING}" ]]; then
   LOGGING=warning
