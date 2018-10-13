@@ -178,46 +178,59 @@ if [[ -z "${IDENTITY}" ]]; then
   IDENTITY=
 fi
 
+IPFS_BIN=$(which ipfs)
+if [ $? -eq 0 ]
+then
+  echo "IPFS daemon starting; bin: ${IPFS_BIN}"
+  ipfs init > /dev/null
+
+  if [[ -z "${IPFS_API_PORT}" ]]; then
+    IPFS_API_PORT=5001
+  fi
+
+  if [[ -z "${IPFS_GATEWAY_PORT}" ]]; then
+    IPFS_GATEWAY_PORT=8080
+  fi
+
+  ipfs config Addresses.API /ip4/0.0.0.0/tcp/${IPFS_API_PORT}
+  ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/${IPFS_GATEWAY_PORT}
+  ipfs daemon &
+fi
+
 PARITY_BIN=$(which parity)
 if [ $? -eq 0 ]
 then
   echo "provide.network node starting in ${BASE_PATH}; parity bin: ${PARITY_BIN}"
+  $PARITY_BIN --chain $CHAIN_SPEC \
+              --base-path "${BASE_PATH}" \
+              --bootnodes "${BOOTNODES}" \
+              --logging $LOGGING \
+              --log-file "${LOG_PATH}" \
+              --allow-ips $ALLOW_IPS \
+              --auto-update $AUTO_UPDATE \
+              --force-sealing \
+              --reseal-on-txs $RESEAL_ON_TXS \
+              --reseal-max-period $RESEAL_MAX_PERIOD \
+              --fat-db $FAT_DB \
+              --pruning $PRUNING \
+              --tracing $TRACING \
+              --port $PORT \
+              --ports-shift $PORTS_SHIFT \
+              --jsonrpc-apis $JSON_RPC_APIS \
+              --jsonrpc-interface $JSON_RPC_INTERFACE \
+              --jsonrpc-port $JSON_RPC_PORT \
+              --jsonrpc-hosts $JSON_RPC_HOSTS \
+              --jsonrpc-cors $JSON_RPC_CORS \
+              --jsonrpc-server-threads $JSON_RPC_SERVER_THREADS \
+              --jsonrpc-threads $JSON_RPC_THREADS \
+              --ws-apis $WS_APIS \
+              --ws-port $WS_PORT \
+              --ws-interface $WS_INTERFACE \
+              --ws-hosts $WS_HOSTS \
+              --ws-origins $WS_ORIGINS \
+              --ws-max-connections $WS_MAX_CONNECTIONS \
+              --engine-signer $ENGINE_SIGNER \
+              --password "${ENGINE_SIGNER_KEY_PATH}" \
+              --author $COINBASE \
+              --identity "${IDENTITY}"
 fi
-
-$PARITY_BIN --chain $CHAIN_SPEC \
-            --base-path "${BASE_PATH}" \
-            --bootnodes "${BOOTNODES}" \
-            --logging $LOGGING \
-            --log-file "${LOG_PATH}" \
-            --allow-ips $ALLOW_IPS \
-            --auto-update $AUTO_UPDATE \
-            --force-sealing \
-            --reseal-on-txs $RESEAL_ON_TXS \
-            --reseal-max-period $RESEAL_MAX_PERIOD \
-            --fat-db $FAT_DB \
-            --pruning $PRUNING \
-            --tracing $TRACING \
-            --port $PORT \
-            --ports-shift $PORTS_SHIFT \
-            --jsonrpc-apis $JSON_RPC_APIS \
-            --jsonrpc-interface $JSON_RPC_INTERFACE \
-            --jsonrpc-port $JSON_RPC_PORT \
-            --jsonrpc-hosts $JSON_RPC_HOSTS \
-            --jsonrpc-cors $JSON_RPC_CORS \
-            --jsonrpc-server-threads $JSON_RPC_SERVER_THREADS \
-            --jsonrpc-threads $JSON_RPC_THREADS \
-            --ipfs-api \
-            --ipfs-api-interface $IPFS_API_INTERFACE \
-            --ipfs-api-port $IPFS_API_PORT \
-            --ipfs-api-cors $IPFS_API_CORS \
-            --ipfs-api-hosts $IPFS_API_HOSTS \
-            --ws-apis $WS_APIS \
-            --ws-port $WS_PORT \
-            --ws-interface $WS_INTERFACE \
-            --ws-hosts $WS_HOSTS \
-            --ws-origins $WS_ORIGINS \
-            --ws-max-connections $WS_MAX_CONNECTIONS \
-            --engine-signer $ENGINE_SIGNER \
-            --password "${ENGINE_SIGNER_KEY_PATH}" \
-            --author $COINBASE \
-            --identity "${IDENTITY}"
