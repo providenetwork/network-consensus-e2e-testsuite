@@ -1,17 +1,13 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
-	"math/big"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/provideservices/provide-go"
 	"github.com/stretchr/testify/assert"
@@ -83,153 +79,153 @@ func testWhileSealing(nBlocks int, test func(int, int)) {
 	}
 }
 
-func getValidators(t *testing.T) ([]common.Address, error) {
-	_abi, err := parseNetworkConsensusABI()
-	assert.Nil(t, err)
-	assert.NotNil(t, _abi)
+// func getValidators(t *testing.T) ([]common.Address, error) {
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, _abi)
 
-	var _params []interface{}
-	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidators", &_abi, _params, 0)
-	assert.Nil(t, err)
+// 	var _params []interface{}
+// 	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidators", &_abi, _params, 0)
+// 	assert.Nil(t, err)
 
-	validators, validatorsOk := (*resp).([]common.Address)
-	assert.True(t, validatorsOk)
+// 	validators, validatorsOk := (*resp).([]common.Address)
+// 	assert.True(t, validatorsOk)
 
-	return validators, nil
-}
+// 	return validators, nil
+// }
 
-func getMasterOfCeremonyPrivateKey() *string {
-	privateKey, _ := parseCachedMasterOfCeremonyPrivateKey()
-	return stringOrNil(hex.EncodeToString(ethcrypto.FromECDSA(privateKey)))
-}
+// func getMasterOfCeremonyPrivateKey() *string {
+// 	privateKey, _ := parseCachedMasterOfCeremonyPrivateKey()
+// 	return stringOrNil(hex.EncodeToString(ethcrypto.FromECDSA(privateKey)))
+// }
 
-func getValidatorCount(t *testing.T) (uint64, error) {
-	_abi, err := parseNetworkConsensusABI()
-	assert.Nil(t, err)
-	assert.NotNil(t, _abi)
+// func getValidatorCount(t *testing.T) (uint64, error) {
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, _abi)
 
-	var _params []interface{}
-	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidatorCount", &_abi, _params, 0)
-	assert.Nil(t, err)
+// 	var _params []interface{}
+// 	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidatorCount", &_abi, _params, 0)
+// 	assert.Nil(t, err)
 
-	validatorCount, countOk := (*resp).(*big.Int)
-	assert.True(t, countOk)
+// 	validatorCount, countOk := (*resp).(*big.Int)
+// 	assert.True(t, countOk)
 
-	return validatorCount.Uint64(), nil
-}
+// 	return validatorCount.Uint64(), nil
+// }
 
-func getValidatorSupportCount(t *testing.T, addr string) (uint64, error) {
-	_abi, err := parseNetworkConsensusABI()
-	assert.Nil(t, err)
-	assert.NotNil(t, _abi)
+// func getValidatorSupportCount(t *testing.T, addr string) (uint64, error) {
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, _abi)
 
-	var _params []interface{}
-	_params = append(_params, addr)
-	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidatorSupportCount", &_abi, _params, 0)
-	assert.Nil(t, err)
+// 	var _params []interface{}
+// 	_params = append(_params, addr)
+// 	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidatorSupportCount", &_abi, _params, 0)
+// 	assert.Nil(t, err)
 
-	supportCount, supportCountOk := (*resp).(*big.Int)
-	assert.True(t, supportCountOk)
+// 	supportCount, supportCountOk := (*resp).(*big.Int)
+// 	assert.True(t, supportCountOk)
 
-	return supportCount.Uint64(), nil
-}
+// 	return supportCount.Uint64(), nil
+// }
 
-func getValidatorSupportDivisor(t *testing.T) (uint64, error) {
-	_abi, err := parseNetworkConsensusABI()
-	assert.Nil(t, err)
-	assert.NotNil(t, _abi)
+// func getValidatorSupportDivisor(t *testing.T) (uint64, error) {
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, _abi)
 
-	var _params []interface{}
-	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidatorSupportDivisor", &_abi, _params, 0)
-	assert.Nil(t, err)
+// 	var _params []interface{}
+// 	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getValidatorSupportDivisor", &_abi, _params, 0)
+// 	assert.Nil(t, err)
 
-	divisor, divisorOk := (*resp).(*big.Int)
-	assert.True(t, divisorOk)
+// 	divisor, divisorOk := (*resp).(*big.Int)
+// 	assert.True(t, divisorOk)
 
-	return divisor.Uint64(), nil
-}
+// 	return divisor.Uint64(), nil
+// }
 
-func getPendingValidators(t *testing.T) ([]common.Address, error) {
-	_abi, err := parseNetworkConsensusABI()
-	assert.Nil(t, err)
-	assert.NotNil(t, _abi)
+// func getPendingValidators(t *testing.T) ([]common.Address, error) {
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, _abi)
 
-	var _params []interface{}
-	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getPendingValidators", &_abi, _params, 0)
-	assert.Nil(t, err)
+// 	var _params []interface{}
+// 	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getPendingValidators", &_abi, _params, 0)
+// 	assert.Nil(t, err)
 
-	validators, validatorsOk := (*resp).([]common.Address)
-	assert.True(t, validatorsOk)
+// 	validators, validatorsOk := (*resp).([]common.Address)
+// 	assert.True(t, validatorsOk)
 
-	return validators, nil
-}
+// 	return validators, nil
+// }
 
-func getPendingValidatorCount(t *testing.T) (uint64, error) {
-	_abi, err := parseNetworkConsensusABI()
-	assert.Nil(t, err)
-	assert.NotNil(t, _abi)
+// func getPendingValidatorCount(t *testing.T) (uint64, error) {
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.Nil(t, err)
+// 	assert.NotNil(t, _abi)
 
-	var _params []interface{}
-	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getPendingValidatorCount", &_abi, _params, 0)
-	assert.Nil(t, err)
+// 	var _params []interface{}
+// 	resp, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "getPendingValidatorCount", &_abi, _params, 0)
+// 	assert.Nil(t, err)
 
-	validatorCount, countOk := (*resp).(*big.Int)
-	assert.True(t, countOk)
+// 	validatorCount, countOk := (*resp).(*big.Int)
+// 	assert.True(t, countOk)
 
-	return validatorCount.Uint64(), nil
-}
+// 	return validatorCount.Uint64(), nil
+// }
 
-func TestMasterOfCeremonySigner(t *testing.T) {
-	// testWhileSealing(defaultStepsUnderTest, func(i, block int) {
-	// 	blockNumber := provide.GetBlockNumber(networkID, rpcURL)
-	// 	assert.NotNil(t, blockNumber)
-	// 	assert.Equal(
-	// 		t,
-	// 		uint64(block),
-	// 		*blockNumber,
-	// 		fmt.Sprintf("it should return %v", block),
-	// 	)
-	// })
+// func TestMasterOfCeremonySigner(t *testing.T) {
+// 	// testWhileSealing(defaultStepsUnderTest, func(i, block int) {
+// 	// 	blockNumber := provide.GetBlockNumber(networkID, rpcURL)
+// 	// 	assert.NotNil(t, blockNumber)
+// 	// 	assert.Equal(
+// 	// 		t,
+// 	// 		uint64(block),
+// 	// 		*blockNumber,
+// 	// 		fmt.Sprintf("it should return %v", block),
+// 	// 	)
+// 	// })
 
-	_abi, err := parseNetworkConsensusABI()
-	assert.NotNil(t, _abi)
+// 	_abi, err := parseNetworkConsensusABI()
+// 	assert.NotNil(t, _abi)
 
-	masterOfCeremonySupportCount, err := getValidatorSupportCount(t, masterOfCeremonyGenesisAddress)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(1), masterOfCeremonySupportCount)
+// 	masterOfCeremonySupportCount, err := getValidatorSupportCount(t, masterOfCeremonyGenesisAddress)
+// 	assert.Nil(t, err)
+// 	assert.Equal(t, uint64(1), masterOfCeremonySupportCount)
 
-	// ADD A VALIDATOR...
-	validator, _, err := provide.GenerateKeyPair()
-	assert.Nil(t, err)
-	var params []interface{}
-	params = append(params, *validator)
-	_, err = provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "addValidator", &_abi, params, 8000000)
-	assert.Nil(t, err)
+// 	// ADD A VALIDATOR...
+// 	validator, _, err := provide.GenerateKeyPair()
+// 	assert.Nil(t, err)
+// 	var params []interface{}
+// 	params = append(params, *validator)
+// 	_, err = provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "addValidator", &_abi, params, 8000000)
+// 	assert.Nil(t, err)
 
-	testWhileSealing(2, func(i, block int) {
-		if i == 1 {
-			// validatorSupportCount, err := getValidatorSupportCount(t, *validator)
-			// assert.Nil(t, err)
-			// assert.Equal(t, uint64(1), validatorSupportCount)
+// 	testWhileSealing(2, func(i, block int) {
+// 		if i == 1 {
+// 			// validatorSupportCount, err := getValidatorSupportCount(t, *validator)
+// 			// assert.Nil(t, err)
+// 			// assert.Equal(t, uint64(1), validatorSupportCount)
 
-			validators, _ := getValidators(t)
-			validatorCount, _ := getValidatorCount(t)
-			assert.Equal(t, 1, len(validators))
-			assert.Equal(t, uint64(len(validators)), validatorCount)
+// 			validators, _ := getValidators(t)
+// 			validatorCount, _ := getValidatorCount(t)
+// 			assert.Equal(t, 1, len(validators))
+// 			assert.Equal(t, uint64(len(validators)), validatorCount)
 
-			pendingValidators, _ := getPendingValidators(t)
-			pendingValidatorCount, _ := getPendingValidatorCount(t)
-			assert.Equal(t, 2, len(pendingValidators))
-			assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
-		}
-	})
-}
+// 			pendingValidators, _ := getPendingValidators(t)
+// 			pendingValidatorCount, _ := getPendingValidatorCount(t)
+// 			assert.Equal(t, 2, len(pendingValidators))
+// 			assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
+// 		}
+// 	})
+// }
 
-func TestGetValidatorSupportDivisor(t *testing.T) {
-	validatorSupportDivisor, err := getValidatorSupportDivisor(t)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(2), validatorSupportDivisor)
-}
+// func TestGetValidatorSupportDivisor(t *testing.T) {
+// 	validatorSupportDivisor, err := getValidatorSupportDivisor(t)
+// 	assert.Nil(t, err)
+// 	assert.Equal(t, uint64(2), validatorSupportDivisor)
+// }
 
 func TestGetChainID(t *testing.T) {
 	chainID := provide.GetChainID(networkID, rpcURL)
@@ -332,36 +328,36 @@ func TestGetProtocolVersion(t *testing.T) {
 	assert.NotNil(t, protocolVersion)
 }
 
-func TestAddValidator(t *testing.T) {
-	testWhileSealing(1, func(i, block int) {
-		networkConsensusABI, _ := parseNetworkConsensusABI()
-		var _params []interface{}
-		_params = append(_params, "0x87b7af6915fa56a837fa85e31ad6a450c41e8fab")
-		_, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "addValidator", networkConsensusABI, _params, 0)
-		assert.Nil(t, err)
+// func TestAddValidator(t *testing.T) {
+// 	testWhileSealing(1, func(i, block int) {
+// 		networkConsensusABI, _ := parseNetworkConsensusABI()
+// 		var _params []interface{}
+// 		_params = append(_params, "0x87b7af6915fa56a837fa85e31ad6a450c41e8fab")
+// 		_, err := provide.ExecuteContract(networkID, rpcURL, masterOfCeremonyGenesisAddress, stringOrNil(networkConsensusGenesisAddress), getMasterOfCeremonyPrivateKey(), nil, nil, "addValidator", networkConsensusABI, _params, 0)
+// 		assert.Nil(t, err)
 
-		// validators, _ := getValidators(t)
-		// validatorCount, _ := getValidatorCount(t)
-		// assert.Equal(t, 1, len(validators))
-		// assert.Equal(t, uint64(len(validators)), validatorCount)
+// 		// validators, _ := getValidators(t)
+// 		// validatorCount, _ := getValidatorCount(t)
+// 		// assert.Equal(t, 1, len(validators))
+// 		// assert.Equal(t, uint64(len(validators)), validatorCount)
 
-		// pendingValidators, _ := getPendingValidators(t)
-		// pendingValidatorCount, _ := getPendingValidatorCount(t)
-		// assert.Equal(t, 2, len(pendingValidators))
-		// assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
-	})
-	testWhileSealing(1, func(i, block int) {
-		validators, _ := getValidators(t)
-		validatorCount, _ := getValidatorCount(t)
-		assert.Equal(t, 1, len(validators))
-		assert.Equal(t, uint64(len(validators)), validatorCount)
+// 		// pendingValidators, _ := getPendingValidators(t)
+// 		// pendingValidatorCount, _ := getPendingValidatorCount(t)
+// 		// assert.Equal(t, 2, len(pendingValidators))
+// 		// assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
+// 	})
+// 	testWhileSealing(1, func(i, block int) {
+// 		validators, _ := getValidators(t)
+// 		validatorCount, _ := getValidatorCount(t)
+// 		assert.Equal(t, 1, len(validators))
+// 		assert.Equal(t, uint64(len(validators)), validatorCount)
 
-		pendingValidators, _ := getPendingValidators(t)
-		pendingValidatorCount, _ := getPendingValidatorCount(t)
-		assert.Equal(t, 2, len(pendingValidators))
-		assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
-	})
-}
+// 		pendingValidators, _ := getPendingValidators(t)
+// 		pendingValidatorCount, _ := getPendingValidatorCount(t)
+// 		assert.Equal(t, 2, len(pendingValidators))
+// 		assert.Equal(t, uint64(len(pendingValidators)), pendingValidatorCount)
+// 	})
+// }
 
 // func TestTraceTx(t *testing.T) {
 // 	log.Printf("TestTraceTx")
